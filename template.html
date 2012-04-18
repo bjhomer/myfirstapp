@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<!-- StackMob JS SDK Javascript Dependencies -->
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/json2-min.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/underscore-1.3.0-min.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/backbone-0.5.3-min.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/stackmob-js-0.1.1-min.js"></script>
+ 
+<!-- Initialize the StackMob JS SDK -->
+<script type="text/javascript">
+  StackMob.init({
+    appName: "myfirstapp",
+    clientSubdomain: "bjhomer",
+    apiVersion: 0
+  });
+</script>
+
+</head>
+<body>
+
+
+<h1>Simple Template</h1>
+
+<p>This is an empty HTML file that has the JS libraries included so that you can get started!  View source and edit to start!</p>
+
+
+<input id='file-picker' type="file" multiple onchange="listFiles(this.files)"/>
+
+<input type="button" onclick="uploadFiles()" value="Upload!" />
+
+<div id="selected-files"></div>
+
+<!-- 
+This is a simple template so that you can get started.  
+It has all the JS libraries included for you already.  
+You can also choose to use Zepto.js or Sencha's ExtJS in place of jQuery.  Simply replace the jQuery include.
+-->
+
+<script type="text/javascript">
+/* Your code can go here */
+function listFiles(files) {
+  for (var i = 0, numFiles = files.length; i < numFiles; i++) {
+    var file = files[i];
+    $('#selected-files').append('<p>' + file.name + '</p>');
+  }
+}
+
+function uploadFiles() {
+  var files = $('#file-picker')[0].files;
+  for (var i = 0, numFiles = files.length; i < numFiles; i++) {
+    var file = files[i];
+    uploadFile(file);
+  }
+}
+
+function uploadFile(file) {
+  var reader = new FileReader();  
+  var xhr = new XMLHttpRequest();
+  
+  xhr.open("POST", "http://api.mob1.stackmob.com/version");
+  xhr.overrideMimeType('text/plain; charset=x-user-defined-binary');
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.setRequestHeader('Accept', 'application/vnd.stackmob+json; version=0');
+  
+  stackmobDataForFile(file, function(the_data) {
+	var obj = {
+	  data: the_data
+	}
+	var finalResult = JSON.stringify(obj);
+	xhr.send(finalResult);
+  });
+}
+
+function stackmobDataForFile(file, handler) {
+  var type = file.type
+  var name = file.name
+  var reader = new FileReader()
+  
+  reader.onload = function(evt) {
+    var binString = evt.target.result;
+    var fileData = btoa(binString)
+	var str = "Content-Type: "+ type + "\n\
+	  Content-Disposition: attachment; filename="+name+"\n\
+	  Content-Transfer-Encoding: base64\n\n"+fileData
+	
+	handler(str)
+  }
+  reader.readAsBinaryString(file)
+}
+</script>
+
+
+</body>
+</html>
