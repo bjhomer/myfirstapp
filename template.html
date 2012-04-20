@@ -60,7 +60,7 @@ function uploadFile(file) {
   var reader = new FileReader();  
   var xhr = new XMLHttpRequest();
   
-  xhr.open("POST", "http://api.mob1.stackmob.com/version");
+  xhr.open("POST", "/version");
   xhr.overrideMimeType('text/plain; charset=x-user-defined-binary');
   xhr.setRequestHeader('Content-Type', 'application/json');
   xhr.setRequestHeader('Accept', 'application/vnd.stackmob+json; version=0');
