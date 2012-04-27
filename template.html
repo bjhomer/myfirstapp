@@ -79,9 +79,9 @@ function stackmobDataForFile(file, handler) {
   
   reader.onload = function(e) {
     var fileData = e.target.result.substring(e.target.result.indexOf(',') + 1, e.target.result.length);
-	var str = "Content-Type: "+ type + "\n\
-	  Content-Disposition: attachment; filename="+name+"\n\
-	  Content-Transfer-Encoding: base64\n\n"+fileData
+	var str = "Content-Type: "+ type + "\n" +
+	  "Content-Disposition: attachment; filename="+name+"\n" +
+	  "Content-Transfer-Encoding: base64\n\n"+fileData
 	
 	handler(str)
   }
