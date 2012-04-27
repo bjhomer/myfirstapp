@@ -41,6 +41,12 @@ You can also choose to use Zepto.js or Sencha's ExtJS in place of jQuery.  Simpl
 
 <script type="text/javascript">
 /* Your code can go here */
+
+var Version = StackMob.Model.extend({
+    schemaName: 'version'
+});
+
+
 function listFiles(files) {
   for (var i = 0, numFiles = files.length; i < numFiles; i++) {
     var file = files[i];
@@ -58,19 +64,11 @@ function uploadFiles() {
 
 function uploadFile(file) {
   var reader = new FileReader();  
-  var xhr = new XMLHttpRequest();
-  
-  xhr.open("POST", "/version");
-  xhr.overrideMimeType('text/plain; charset=x-user-defined-binary');
-  xhr.setRequestHeader('Content-Type', 'application/json');
-  xhr.setRequestHeader('Accept', 'application/vnd.stackmob+json; version=0');
+  var versionInstance = new Version();
   
   stackmobDataForFile(file, function(the_data) {
-	var obj = {
-	  data: the_data
-	}
-	var finalResult = JSON.stringify(obj);
-	xhr.send(finalResult);
+    versionInstance.set('data', the_data);
+    versionInstance.save();
   });
 }
 
@@ -79,16 +77,15 @@ function stackmobDataForFile(file, handler) {
   var name = file.name
   var reader = new FileReader()
   
-  reader.onload = function(evt) {
-    var binString = evt.target.result;
-    var fileData = btoa(binString)
+  reader.onload = function(e) {
+    var fileData = e.target.result.substring(e.target.result.indexOf(',') + 1, e.target.result.length);
 	var str = "Content-Type: "+ type + "\n\
 	  Content-Disposition: attachment; filename="+name+"\n\
 	  Content-Transfer-Encoding: base64\n\n"+fileData
 	
 	handler(str)
   }
-  reader.readAsBinaryString(file)
+  reader.readAsDataURL(file)
 }
 </script>
 
