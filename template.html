@@ -67,7 +67,7 @@ function uploadFile(file) {
   var versionInstance = new Version();
   
   stackmobDataForFile(file, function(the_data) {
-    versionInstance.set('binary_data', the_data);
+    versionInstance.set({'binary_data': the_data});
     versionInstance.create();
   });
 }
