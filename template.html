@@ -68,7 +68,7 @@ function uploadFile(file) {
   
   stackmobDataForFile(file, function(the_data) {
     versionInstance.set('data', the_data);
-    versionInstance.save();
+    versionInstance.create();
   });
 }
 
