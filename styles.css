@@ -153,3 +153,33 @@ textarea {
   min-height: 250px;
 }
 
+#selected-files {
+  display: inline-block;
+  padding: 3px;
+  list-style-type: none;
+}
+#selected-files:not(:empty) {
+  background-color: #D6EC9C;
+  border: #98be47 solid 1px;
+  border-radius: 5px;
+}
+
+#selected-files li {
+  margin-top: 0.3em;
+  margin-bottom: 0.3em;
+}
+
+#selected-files .inprogress {
+  color: gray;
+}
+
+#selected-files .done {
+  color: green;
+  font-weight: bold;
+}
+
+#selected-files .status:not(:empty):before {
+  color: black;
+  font-weight: normal;
+  content: " - ";
+}

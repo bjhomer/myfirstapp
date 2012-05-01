@@ -2,6 +2,8 @@
 <html>
 <head>
 
+<link type="text/css" rel="stylesheet" href="styles.css"
+
 <!-- StackMob JS SDK Javascript Dependencies -->
 <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"></script>
 <script type="text/javascript" src="http://static.stackmob.com/js/json2-min.js"></script>
@@ -29,9 +31,9 @@
 
 <input id='file-picker' type="file" multiple onchange="listFiles(this.files)"/>
 
-<input type="button" onclick="uploadFiles()" value="Upload!" />
-
-<div id="selected-files"></div>
+<input class="button green" type="button" onclick="uploadFiles()" value="Upload!" />
+<div></div>
+<ul id="selected-files"></ul>
 
 <!-- 
 This is a simple template so that you can get started.  
@@ -48,9 +50,11 @@ var Version = StackMob.Model.extend({
 
 
 function listFiles(files) {
+  $('#selected-files').html('');
   for (var i = 0, numFiles = files.length; i < numFiles; i++) {
     var file = files[i];
-    $('#selected-files').append('<p>' + file.name + '</p>');
+    file.index = i;
+    $('#selected-files').append('<li>' + file.name + '<span class="status" id="status-'+i+'"></span></li>');
   }
 }
 
@@ -66,9 +70,20 @@ function uploadFile(file) {
   var reader = new FileReader();  
   var versionInstance = new Version();
   
+  $('#status-'+file.index).html('uploading').addClass('inprogress')
+  
   stackmobDataForFile(file, function(the_data) {
+    var fileIndex = file.index;
     versionInstance.set({'binary_data': the_data});
-    versionInstance.create();
+    var retVal = versionInstance.create({
+      success: function(model) {
+        console.debug("upload succeeded");
+        $('#status-'+fileIndex).html("done").removeClass('inprogress').addClass('done');
+      },
+      error: function(model, response) {
+        console.debug("upload failed: " + response);
+        $('#status-'+fileIndex).html("error").removeClass('inprogress');
+      }    });
   });
 }
 
