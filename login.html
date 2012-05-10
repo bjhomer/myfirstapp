@@ -27,12 +27,12 @@
 <h1>Welcome</h1>
 
 <p id='login-status'>Please log in</p>
-<div id="login-area" style="display:none">
+<div id="login-area" style="display:none;">
 
 <form onsubmit="doLogin(); return false;" action="">
 <input id='username-field' type="text" placeholder="email" /><br/>
-<input id='password-field' type="password" placeholder="password"/>
-<input class="button green" type="submit" value="Login!" />
+<input id='password-field' type="password" placeholder="password"/><br/>
+<input style='float:right' class="button green" type="submit" value="Login!" />
 </form>
 </div>
 
@@ -82,7 +82,7 @@ function doLogout() {
 	$(statusArea).text('Logging out...')
 	user.logout({
 	    success: function (model) {
-			loginArea.style.display = 'block';
+			loginArea.style.display = 'inline-block';
 			logoutArea.style.display = 'none';
 			$(statusArea).text('Please log in');
 	    }
@@ -92,7 +92,7 @@ function doLogout() {
 function checkLoggedIn() {
     var loggedIn = StackMob.isLoggedIn();
     if (loggedIn == false) {
-        loginArea.style.display = 'block';
+        loginArea.style.display = 'inline-block';
         $(statusArea).text('Please log in');
     }
     else {
