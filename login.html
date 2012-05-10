@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link type="text/css" rel="stylesheet" href="styles.css"
+
+<!-- StackMob JS SDK Javascript Dependencies -->
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/json2-min.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/underscore-1.3.0-min.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/backbone-0.5.3-min.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/stackmob-js-0.2.1.js"></script>
+ 
+<!-- Initialize the StackMob JS SDK -->
+<script type="text/javascript">
+  StackMob.init({
+    appName: "myfirstapp",
+    clientSubdomain: "bjhomer",
+    apiVersion: 0
+  });
+</script>
+
+</head>
+<body>
+
+
+<h1>Welcome</h1>
+
+<p>Please log in</p>
+
+<form onsubmit="doLogin(); return false;" action="">
+<input id='username-field' type="text" placeholder="email" /><br/>
+<input id='password-field' type="password" placeholder="password"/>
+<input class="button green" type="submit" value="Login!" />
+</form>
+<div></div>
+<ul id="selected-files"></ul>
+
+<!-- 
+This is a simple template so that you can get started.  
+It has all the JS libraries included for you already.  
+You can also choose to use Zepto.js or Sencha's ExtJS in place of jQuery.  Simply replace the jQuery include.
+-->
+
+<script type="text/javascript">
+/* Your code can go here */
+
+function doLogin() {
+	var username = document.getElementById('username-field').value;
+	var pass = document.getElementById('password-field').value;
+	
+	var user = new StackMob.User({username: username, password: pass});
+	
+	user.login(false, {
+		success: function(model) {
+			alert('login successful');
+		},
+		error: function(model, response) {
+			alert('login failed');
+		}
+	});
+	return false;
+}
+</script>
+
+
+</body>
+</html>
