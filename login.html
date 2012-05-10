@@ -26,8 +26,8 @@
 
 <h1>Welcome</h1>
 
+<p id='login-status'>Please log in</p>
 <div id="login-area" style="display:none">
-<p>Please log in</p>
 
 <form onsubmit="doLogin(); return false;" action="">
 <input id='username-field' type="text" placeholder="email" /><br/>
@@ -48,19 +48,29 @@ You can also choose to use Zepto.js or Sencha's ExtJS in place of jQuery.  Simpl
 <script type="text/javascript">
 /* Your code can go here */
 
+var loginArea = document.getElementById('login-area');
+var logoutArea = document.getElementById('logout-area');
+var statusArea = document.getElementById('login-status');
+
 function doLogin() {
-	var username = document.getElementById('username-field').value;
-	var pass = document.getElementById('password-field').value;
+	var usernameField = document.getElementById('username-field');
+	var passwordField = document.getElementById('password-field')
+	var username = usernameField.value;
+	var pass = passwordField.value;
 	
 	var user = new StackMob.User({username: username, password: pass});
 	
+	$(statusArea).text('Logging in...');
 	user.login(false, {
 		success: function(model) {
-			document.getElementById('login-area').style.display = 'none';
-			document.getElementById('logout-area').style.display = 'block';
+			loginArea.style.display = 'none';
+			logoutArea.style.display = 'block';
+			usernameField.value = '';
+			passwordField.value = ''
+			$(statusArea).text('Logged in');
 		},
 		error: function(model, response) {
-			alert('login failed');
+			$(statusArea).text('Login failed');
 		}
 	});
 	return false;
@@ -69,10 +79,12 @@ function doLogin() {
 function doLogout() {
 	var username = StackMob.getLoggedInUser();
 	var user = new StackMob.User({username:username});
+	$(statusArea).text('Logging out...')
 	user.logout({
 	    success: function (model) {
-			document.getElementById('login-area').style.display = 'block';
-			document.getElementById('logout-area').style.display = 'none';
+			loginArea.style.display = 'block';
+			logoutArea.style.display = 'none';
+			$(statusArea).text('Please log in');
 	    }
 	});
 }
@@ -80,10 +92,12 @@ function doLogout() {
 function checkLoggedIn() {
     var loggedIn = StackMob.isLoggedIn();
     if (loggedIn == false) {
-        document.getElementById('login-area').style.display = 'block';
+        loginArea.style.display = 'block';
+        $(statusArea).text('Please log in');
     }
     else {
-        document.getElementById('logout-area').style.display = 'block';
+        logoutArea.style.display = 'block';
+        $(statusArea).text('Logged in');
     }
 }
 checkLoggedIn();
