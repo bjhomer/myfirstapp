@@ -26,6 +26,7 @@
 
 <h1>Welcome</h1>
 
+<div id="login-area" style="display:none">
 <p>Please log in</p>
 
 <form onsubmit="doLogin(); return false;" action="">
@@ -33,8 +34,10 @@
 <input id='password-field' type="password" placeholder="password"/>
 <input class="button green" type="submit" value="Login!" />
 </form>
-<div></div>
-<ul id="selected-files"></ul>
+</div>
+
+<div id='logout-area' style="display:none">
+<input class="button" type="button" value="Logout" onclick="doLogout();"/>
 
 <!-- 
 This is a simple template so that you can get started.  
@@ -53,7 +56,8 @@ function doLogin() {
 	
 	user.login(false, {
 		success: function(model) {
-			alert('login successful');
+			document.getElementById('login-area').style.display = 'none';
+			document.getElementById('logout-area').style.display = 'block';
 		},
 		error: function(model, response) {
 			alert('login failed');
@@ -61,6 +65,28 @@ function doLogin() {
 	});
 	return false;
 }
+
+function doLogout() {
+	var username = StackMob.getLoggedInUser();
+	var user = new StackMob.User({username:username});
+	user.logout({
+	    success: function (model) {
+			document.getElementById('login-area').style.display = 'block';
+			document.getElementById('logout-area').style.display = 'none';
+	    }
+	});
+}
+
+function checkLoggedIn() {
+    var loggedIn = StackMob.isLoggedIn();
+    if (loggedIn == false) {
+        document.getElementById('login-area').style.display = 'block';
+    }
+    else {
+        document.getElementById('logout-area').style.display = 'block';
+    }
+}
+checkLoggedIn();
 </script>
 
 
