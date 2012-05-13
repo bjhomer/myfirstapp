@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link type="text/css" rel="stylesheet" href="styles.css"
+
+<!-- StackMob JS SDK Javascript Dependencies -->
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/json2-min.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/underscore-1.3.0-min.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/backbone-0.5.3-min.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/stackmob-js-0.2.1.js"></script>
+ 
+<!-- Initialize the StackMob JS SDK -->
+<script type="text/javascript">
+  StackMob.init({
+    appName: "myfirstapp",
+    clientSubdomain: "bjhomer",
+    apiVersion: 0
+  });
+</script>
+
+</head>
+<body>
+
+<div id="loginStatus"></div>
+
+<ul id="projects-list" style="display:none">
+<li>Add new project:
+  <form onsubmit="createProject(); return false;">
+    <input id="new-project-name" type="text" placeholder="Project name" onreturn="createProject();">
+  </form>
+</li>
+</ul>
+
+<script type="text/javascript">
+var Project = StackMob.Model.extend({ schemaName: 'project' });
+var Projects = StackMob.Collection.extend({ model: Project });
+
+var loginStatus = document.getElementById('loginStatus');
+
+function listProjects() {
+	var loggedIn = StackMob.isLoggedIn();
+	if (loggedIn == false) {
+		console.debug("Can't list projects while not logged in");
+		return;
+	}
+	
+	var projectsList = document.getElementById('projects-list')
+	$(projectsList).css('display', 'block');
+	
+	var projects = new Projects();
+	projects.fetch({
+	  success: function(collection) {
+		collection.each(function(model) {
+			addProject(model);
+		})
+	  },
+	  error: function (foo, response) {
+		console.debug(response);
+	  }
+	});
+}
+
+function createProject() {
+	var nameField = document.getElementById('new-project-name');
+	var name = nameField.value;
+	if (name.length == 0) {
+		return;
+	}
+	var proj = new Project({name: name});
+	proj.create({
+		success: function (model) {
+			addProject(model);
+			nameField.value = ""
+		},
+		error: function (model, response) {
+			console.debug(response);
+		}
+	});
+}
+
+function checkForLogin() {
+	var loggedIn = StackMob.isLoggedIn();
+	if (loggedIn == false) {
+		$(loginStatus).text('You are not logged in');
+	}
+	else {
+		var username = StackMob.getLoggedInUser();
+		$(loginStatus).text('Welcome, ' + username);
+	}
+}
+
+function addProject(proj) {
+	var name = proj.get('name');
+	$('#projects-list li').last().before("<li>"+name+"</li>");
+}
+
+checkForLogin();
+listProjects();
+</script>
+
+</body>
+</html>
