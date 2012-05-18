@@ -37,7 +37,9 @@
 </div>
 
 <div id='logout-area' style="display:none">
+<a href="/projects.html">See projects</a><br/>
 <input class="button" type="button" value="Logout" onclick="doLogout();"/>
+</div>
 
 <!-- 
 This is a simple template so that you can get started.  
@@ -68,6 +70,7 @@ function doLogin() {
 			usernameField.value = '';
 			passwordField.value = ''
 			$(statusArea).text('Logged in');
+			window.location = "/projects.html"
 		},
 		error: function(model, response) {
 			$(statusArea).text('Login failed');

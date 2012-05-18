@@ -83,7 +83,7 @@ function createProject() {
 function checkForLogin() {
 	var loggedIn = StackMob.isLoggedIn();
 	if (loggedIn == false) {
-		$(loginStatus).text('You are not logged in');
+		$(loginStatus).html('<span>You are not logged in.<span> <a href="/login.html">Log in.</a>');
 	}
 	else {
 		var username = StackMob.getLoggedInUser();
@@ -93,7 +93,8 @@ function checkForLogin() {
 
 function addProject(proj) {
 	var name = proj.get('name');
-	$('#projects-list li').last().before("<li>"+name+"</li>");
+	var proj_id = proj.get('project_id')
+	$('#projects-list li').last().before("<li><a href='/sheets.html?"+proj_id + "'>" +name+"</a></li>");
 }
 
 checkForLogin();

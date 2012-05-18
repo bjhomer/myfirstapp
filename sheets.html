@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<link type="text/css" rel="stylesheet" href="styles.css"
+
+<!-- StackMob JS SDK Javascript Dependencies -->
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/json2-min.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/underscore-1.3.0-min.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/backbone-0.5.3-min.js"></script>
+<script type="text/javascript" src="http://static.stackmob.com/js/stackmob-js-0.2.1.js"></script>
+ 
+<!-- Initialize the StackMob JS SDK -->
+<script type="text/javascript">
+  StackMob.init({
+    appName: "myfirstapp",
+    clientSubdomain: "bjhomer",
+    apiVersion: 0
+  });
+</script>
+
+</head>
+<body>
+
+<div id="loginStatus"></div>
+
+<ul id="sheets-list" style="display:none">
+</ul>
+
+<div id="drag-target">Drop files here to upload.
+<ul id="selected-files"></ul>
+</div>
+
+<script type="text/javascript">
+var SheetGroup = StackMob.Model.extend({ schemaName: 'sheetgroup' });
+var SheetGroups = StackMob.Collection.extend({ model: SheetGroup });
+
+var Sheet = StackMob.Model.extend({ schemaName: 'sheet' });
+var Sheets = StackMob.Collection.extend({ model: Sheet });
+
+var Project = StackMob.Model.extend({ schemaName: 'project' });
+
+var loginStatus = document.getElementById('loginStatus');
+
+var projectId = window.location.search.substring(1)
+
+function listSheets() {
+	var loggedIn = StackMob.isLoggedIn();
+	if (loggedIn == false) {
+		console.debug("Can't list sheets while not logged in");
+		return;
+	}
+	
+	var sheetsList = document.getElementById('sheets-list')
+	$(sheetsList).css('display', 'block');
+	
+	var project = new Project({ project_id: projectId });
+	project.fetchExpanded(2, {
+		success: function(model) {
+			project = model;
+			var sheetgroups = project.get('sheetgroups');
+			if (sheetgroups == undefined) {
+				showHasNoGroups();
+				return;
+			}
+			for (var i=0; i<sheetgroups.length; ++i) {
+				var model = new SheetGroup(sheetgroups[i]);
+				addSheetGroup(model);
+			}
+		},
+		failure: function(model, response) {
+			console.debug('failed to fetch project: ' + response);
+		}
+	});
+
+}
+
+function addSheetGroup(group) {
+	var name = group.get('name');
+	$('#sheets-list').append("<li>"+name+"</li>");
+}
+
+function showHasNoGroups() {
+	$('#sheets-list').append("<li>There are no sheets in this project</li>");
+}
+
+function checkForLogin() {
+	var loggedIn = StackMob.isLoggedIn();
+	if (loggedIn == false) {
+		$(loginStatus).html('<span>You are not logged in.<span> <a href="/login.html">Log in.</a>');
+	}
+	else {
+		var username = StackMob.getLoggedInUser();
+		$(loginStatus).text('Welcome, ' + username);
+	}
+}
+
+function listFiles(files) {
+  $('#selected-files').html('');
+  for (var i = 0, numFiles = files.length; i < numFiles; i++) {
+    var file = files[i];
+    file.index = i;
+    $('#selected-files').append('<li>' + file.name + '<span class="status" id="status-'+i+'"></span></li>');
+  }
+}
+
+function uploadFiles() {
+  var files = $('#file-picker')[0].files;
+  for (var i = 0, numFiles = files.length; i < numFiles; i++) {
+    var file = files[i];
+    uploadFile(file);
+  }
+}
+
+function uploadFile(file) {
+  var reader = new FileReader();  
+  var sheet = new Sheet();
+  
+  $('#status-'+file.index).html('uploading').addClass('inprogress')
+  
+  reader.onload = function (evt) {
+	var base64Content = e.target.result.substring(e.target.result.indexOf(',') + 1, e.target.result.length);
+	var fileName = theFile.name;
+	var fileType = theFile.type;
+    
+    sheet.setBinaryFile('data', fileName, fileType, base64Content);
+    sheet.create({
+      success: function(model) {
+        console.debug("upload succeeded");
+        $('#status-'+fileIndex).html("done").removeClass('inprogress').addClass('done');
+      },
+      error: function(model, response) {
+        console.debug("upload failed: " + response);
+        $('#status-'+fileIndex).html("error").removeClass('inprogress');
+      }
+    })
+  };
+}
+
+function setupDragAndDrop() {
+  var dropzone = document.getElementById("drag-target");
+  
+  dropzone.ondragenter = function(event) {
+    event.stopPropagation();
+    event.preventDefault();
+    
+    $(dropzone).addClass('highlighted');
+  }
+  
+  dropzone.ondragleave = function(event) {
+    event.stopPropagation();
+    event.preventDefault();
+    
+    $(dropzone).removeClass('highlighted');
+  }
+  
+  dropzone.ondragover = function(event) {
+	  event.stopPropagation();
+	  event.preventDefault();
+	  
+	  event.dataTransfer.dropEffect = 'copy'
+  }
+  
+  dropzone.ondrop = function(event) {
+	  event.stopPropagation();
+	  event.preventDefault();
+	  
+	  $(dropzone).removeClass('highlighted')
+  
+	  var filesArray = event.dataTransfer.files;
+	  listFiles(filesArray);
+  }
+  
+  document.documentElement.ondragenter = function(event) {
+    event.stopPropagation();
+    event.preventDefault();
+    
+    event.dataTransfer.dropEffect = 'none';
+  }
+}
+
+
+checkForLogin();
+listSheets();
+setupDragAndDrop();
+</script>
+
+</body>
+</html>

@@ -183,3 +183,13 @@ textarea {
   font-weight: normal;
   content: " - ";
 }
+
+#drag-target {
+  background-color: #D6EC9C;
+  border: #98be47 solid 1px;
+  border-radius: 5px;
+}
+
+#drag-target.highlighted {
+  background-color: red;
+}
