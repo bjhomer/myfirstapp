@@ -25,12 +25,25 @@
 
 <div id="loginStatus"></div>
 
-<ul id="sheets-list" style="display:none">
+<ul id="sheetgroups-list" style="display:none">
+<li id="new-sheetgroup">
+<form onsubmit="createSheetGroup(); return false;">
+  <input id='new-sheetgroup-name' type="text" placeholder="Add a new sheet group"/>
+  <input type="submit" value="Add"/>
+</form>
 </ul>
 
-<div id="drag-target">Drop files here to upload.
-<ul id="selected-files"></ul>
-</div>
+
+
+
+<li id="sheetgroup-template" style="display:none">
+  <span class="sheetgroup-name"></span>
+  <ul class="sheets-list"></ul>
+
+  <div class="drag-target" style="display:none">Drop files here to upload.
+	<ul class="selected-files"></ul>
+ </div>
+</li>
 
 <script type="text/javascript">
 var SheetGroup = StackMob.Model.extend({ schemaName: 'sheetgroup' });
@@ -44,6 +57,7 @@ var Project = StackMob.Model.extend({ schemaName: 'project' });
 var loginStatus = document.getElementById('loginStatus');
 
 var projectId = window.location.search.substring(1)
+var project = new Project({ project_id: projectId });
 
 function listSheets() {
 	var loggedIn = StackMob.isLoggedIn();
@@ -53,9 +67,8 @@ function listSheets() {
 	}
 	
 	var sheetsList = document.getElementById('sheets-list')
-	$(sheetsList).css('display', 'block');
+	$(sheetsList).css('display', '');
 	
-	var project = new Project({ project_id: projectId });
 	project.fetchExpanded(2, {
 		success: function(model) {
 			project = model;
@@ -78,7 +91,37 @@ function listSheets() {
 
 function addSheetGroup(group) {
 	var name = group.get('name');
-	$('#sheets-list').append("<li>"+name+"</li>");
+	var $newElement = $('#sheetgroup-template').clone();
+	$newElement.attr('id', 'sheetgroup-'+name);
+	$newElement.find('.sheetgroup-name').text(name);
+	$newElement.css('display', '')
+
+	var $dragTarget = $newElement.find('.drag-target')
+	$dragTarget.attr('id', 'drag-target-'+name);
+	$dragTarget.css('display', '');
+	setupDragAndDrop($dragTarget.get(0), name);
+	$('#new-sheetgroup').before($newElement);
+}
+
+function createSheetGroup() {
+	var nameField = document.getElementById('new-sheetgroup-name');
+	var name = nameField.value;
+	if (name.length == 0) {
+		return;
+	}
+	var group = new SheetGroup({name: name});
+	project.addRelationship('sheetgroups', [group], {
+		success: function (group) {
+			if (!group.toJSON) {
+				group = new SheetGroup(group);
+			}
+			addSheetGroup(group);
+			nameField.value = ""
+		},
+		error: function (model, response) {
+			console.debug(response);
+		}
+	});
 }
 
 function showHasNoGroups() {
@@ -93,19 +136,24 @@ function checkForLogin() {
 	else {
 		var username = StackMob.getLoggedInUser();
 		$(loginStatus).text('Welcome, ' + username);
+		$('#drag-target').css('display', '');
+		$('#sheetgroups-list').css('display', '')
 	}
 }
 
-function listFiles(files) {
-  $('#selected-files').html('');
+function listFiles(files, listElement) {
+  $(listElement).html('');
   for (var i = 0, numFiles = files.length; i < numFiles; i++) {
     var file = files[i];
     file.index = i;
-    $('#selected-files').append('<li>' + file.name + '<span class="status" id="status-'+i+'"></span></li>');
+    $(listElement).append('<li>' + file.name + '<span class="status" id="status-'+i+'"></span></li>');
   }
 }
 
 function uploadFiles() {
+  if (StackMob.isLoggedIn() == false) {
+    return;
+  }
   var files = $('#file-picker')[0].files;
   for (var i = 0, numFiles = files.length; i < numFiles; i++) {
     var file = files[i];
@@ -138,8 +186,7 @@ function uploadFile(file) {
   };
 }
 
-function setupDragAndDrop() {
-  var dropzone = document.getElementById("drag-target");
+function setupDragAndDrop(dropzone) {
   
   dropzone.ondragenter = function(event) {
     event.stopPropagation();
@@ -167,9 +214,9 @@ function setupDragAndDrop() {
 	  event.preventDefault();
 	  
 	  $(dropzone).removeClass('highlighted')
-  
+	  var listElement = $(dropzone).find('ul.selected-files')
 	  var filesArray = event.dataTransfer.files;
-	  listFiles(filesArray);
+	  listFiles(filesArray, listElement);
   }
   
   document.documentElement.ondragenter = function(event) {
@@ -183,7 +230,6 @@ function setupDragAndDrop() {
 
 checkForLogin();
 listSheets();
-setupDragAndDrop();
 </script>
 
 </body>

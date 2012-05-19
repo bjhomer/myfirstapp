@@ -153,43 +153,47 @@ textarea {
   min-height: 250px;
 }
 
-#selected-files {
-  display: inline-block;
-  padding: 3px;
-  list-style-type: none;
-}
-#selected-files:not(:empty) {
-  background-color: #D6EC9C;
-  border: #98be47 solid 1px;
-  border-radius: 5px;
+.selected-files {
+  #display: inline-block;
 }
 
-#selected-files li {
+.selected-files li {
   margin-top: 0.3em;
   margin-bottom: 0.3em;
 }
 
-#selected-files .inprogress {
+.selected-files .inprogress {
   color: gray;
 }
 
-#selected-files .done {
+.selected-files .done {
   color: green;
   font-weight: bold;
 }
 
-#selected-files .status:not(:empty):before {
+.selected-files .status:not(:empty):before {
   color: black;
   font-weight: normal;
   content: " - ";
 }
 
-#drag-target {
+#sheets-list {
+  padding-left: 2px;
+}
+
+#sheets-list li {
+  list-style-type:none;
+}
+
+.drag-target {
+  display: inline-block;
   background-color: #D6EC9C;
   border: #98be47 solid 1px;
   border-radius: 5px;
+  padding: 3px;
 }
 
-#drag-target.highlighted {
+.drag-target.highlighted {
   background-color: red;
+  color: white;
 }
