@@ -26,12 +26,15 @@
 <div id="loginStatus"></div>
 
 <ul id="sheetgroups-list" style="display:none">
-<li id="new-sheetgroup">
-<form onsubmit="createSheetGroup(); return false;">
-  <input id='new-sheetgroup-name' type="text" placeholder="Add a new sheet group"/>
-  <input type="submit" value="Add"/>
-</form>
+  <li id="new-sheetgroup">
+    <form onsubmit="createNewSheetGroup(); return false;">
+      <input id='new-sheetgroup-name' type="text" placeholder="Add a new sheet group"/>
+      <input type="submit" value="Add"/>
+    </form>
+  </li>
 </ul>
+
+<input type="button" onclick="uploadFiles()" value="Upload files" />
 
 
 
@@ -41,16 +44,26 @@
   <ul class="sheets-list"></ul>
 
   <div class="drag-target" style="display:none">Drop files here to upload.
-	<ul class="selected-files"></ul>
- </div>
+    <ul class="selected-files"></ul>
+  </div>
 </li>
 
 <script type="text/javascript">
 var SheetGroup = StackMob.Model.extend({ schemaName: 'sheetgroup' });
-var SheetGroups = StackMob.Collection.extend({ model: SheetGroup });
+var SheetGroupsCollection = StackMob.Collection.extend({ model: SheetGroup });
+var sheetgroups = new SheetGroupsCollection();
 
-var Sheet = StackMob.Model.extend({ schemaName: 'sheet' });
-var Sheets = StackMob.Collection.extend({ model: Sheet });
+var Sheet = StackMob.Model.extend({ 
+  schemaName: 'sheet',
+  setBinaryFile: function(fieldName, filename, filetype, base64EncodedData) {
+    var binaryValueString = 'Content-Type: ' + filetype + '\n' + 
+      'Content-Disposition: attachment; ' + 
+      'filename=' + filename + '\n' + 
+      'Content-Transfer-Encoding: base64\n\n' + base64EncodedData;
+    this.set({fieldName: binaryValueString}); 
+  }
+});
+var SheetCollection = StackMob.Collection.extend({model: Sheet});
 
 var Project = StackMob.Model.extend({ schemaName: 'project' });
 
@@ -59,94 +72,109 @@ var loginStatus = document.getElementById('loginStatus');
 var projectId = window.location.search.substring(1)
 var project = new Project({ project_id: projectId });
 
-function listSheets() {
-	var loggedIn = StackMob.isLoggedIn();
-	if (loggedIn == false) {
-		console.debug("Can't list sheets while not logged in");
-		return;
-	}
-	
-	var sheetsList = document.getElementById('sheets-list')
-	$(sheetsList).css('display', '');
-	
-	project.fetchExpanded(2, {
-		success: function(model) {
-			project = model;
-			var sheetgroups = project.get('sheetgroups');
-			if (sheetgroups == undefined) {
-				showHasNoGroups();
-				return;
-			}
-			for (var i=0; i<sheetgroups.length; ++i) {
-				var model = new SheetGroup(sheetgroups[i]);
-				addSheetGroup(model);
-			}
-		},
-		failure: function(model, response) {
-			console.debug('failed to fetch project: ' + response);
-		}
-	});
+function populateSheetGroups() {
+  var loggedIn = StackMob.isLoggedIn();
+  if (loggedIn == false) {
+    console.debug("Can't list sheets while not logged in");
+    return;
+  }
+  
+  var sheetsList = document.getElementById('sheets-list')
+  $(sheetsList).css('display', '');
+  
+  project.fetchExpanded(2, {
+    success: function(model) {
+      project = model;
+      var groups = project.get('sheetgroups');
+      if (groups == undefined) {
+        showHasNoGroups();
+        return;
+      }
+      for (var i=0; i<groups.length; ++i) {
+        var model = new SheetGroup(groups[i]);
+        appendSheetGroup(model);
+      }
+    },
+    failure: function(model, response) {
+      console.debug('failed to fetch project: ' + response);
+    }
+  });
 
 }
 
-function addSheetGroup(group) {
-	var name = group.get('name');
-	var $newElement = $('#sheetgroup-template').clone();
-	$newElement.attr('id', 'sheetgroup-'+name);
-	$newElement.find('.sheetgroup-name').text(name);
-	$newElement.css('display', '')
+function appendSheetGroup(group) {
+  sheetgroups.add(group)
 
-	var $dragTarget = $newElement.find('.drag-target')
-	$dragTarget.attr('id', 'drag-target-'+name);
-	$dragTarget.css('display', '');
-	setupDragAndDrop($dragTarget.get(0), name);
-	$('#new-sheetgroup').before($newElement);
+  var name = group.get('name');
+  var $newElement = $('#sheetgroup-template').clone();
+  $newElement.attr('id', 'sheetgroup-'+name);
+  $newElement.find('.sheetgroup-name').text(name);
+  $newElement.css('display', '')
+
+  var $dragTarget = $newElement.find('.drag-target')
+  $dragTarget.attr('id', 'drag-target-'+name);
+  $dragTarget.css('display', '');
+  $dragTarget.data('sheetgroup', group);
+  setupDragAndDrop($dragTarget.get(0), name);
+  $('#new-sheetgroup').before($newElement);
 }
 
-function createSheetGroup() {
-	var nameField = document.getElementById('new-sheetgroup-name');
-	var name = nameField.value;
-	if (name.length == 0) {
-		return;
-	}
-	var group = new SheetGroup({name: name});
-	project.addRelationship('sheetgroups', [group], {
-		success: function (group) {
-			if (!group.toJSON) {
-				group = new SheetGroup(group);
-			}
-			addSheetGroup(group);
-			nameField.value = ""
-		},
-		error: function (model, response) {
-			console.debug(response);
-		}
-	});
+
+function createNewSheetGroup() {
+  var nameField = document.getElementById('new-sheetgroup-name');
+  var name = nameField.value;
+  if (name.length == 0) {
+    return;
+  }
+  var group = new SheetGroup({name: name});
+  project.addRelationship('sheetgroups', [group], {
+    success: function (group) {
+      if (!group.toJSON) {
+        group = new SheetGroup(group); 
+      }
+      appendSheetGroup(group);
+      nameField.value = ""
+    },
+    error: function (model, response) {
+      console.debug(response);
+    }
+  });
 }
 
 function showHasNoGroups() {
-	$('#sheets-list').append("<li>There are no sheets in this project</li>");
+  $('#sheets-list').append("<li>There are no sheets in this project</li>");
 }
 
 function checkForLogin() {
-	var loggedIn = StackMob.isLoggedIn();
-	if (loggedIn == false) {
-		$(loginStatus).html('<span>You are not logged in.<span> <a href="/login.html">Log in.</a>');
-	}
-	else {
-		var username = StackMob.getLoggedInUser();
-		$(loginStatus).text('Welcome, ' + username);
-		$('#drag-target').css('display', '');
-		$('#sheetgroups-list').css('display', '')
-	}
+  var loggedIn = StackMob.isLoggedIn();
+  if (loggedIn == false) {
+    $(loginStatus).html('<span>You are not logged in.<span> <a href="/login.html">Log in.</a>');
+  }
+  else {
+    var username = StackMob.getLoggedInUser();
+    $(loginStatus).text('Welcome, ' + username);
+    $('#drag-target').css('display', '');
+    $('#sheetgroups-list').css('display', '')
+  }
 }
 
-function listFiles(files, listElement) {
-  $(listElement).html('');
-  for (var i = 0, numFiles = files.length; i < numFiles; i++) {
+function insertFilesInGroup(files, group) {
+  var groupname = group.get('name');
+  var dropzone = $('#drag-target-' + groupname);
+  var listElement = $(dropzone).find('ul.selected-files')
+  group.pendingSheets = new SheetCollection();
+
+  $(listElement).html('');  
+  for (var i=0; i<files.length; ++i) {
     var file = files[i];
-    file.index = i;
-    $(listElement).append('<li>' + file.name + '<span class="status" id="status-'+i+'"></span></li>');
+    var filerow = $(listElement).append('<li>' + file.name + '</li>');
+
+    (function (row) {
+      sheetFromFile(file, function (sheet) {
+        filerow.append('<span class="status" id="status-'+sheet.cid+'"></span>')
+        group.pendingSheets.add(sheet);
+      });
+    })(filerow);
   }
 }
 
@@ -154,36 +182,47 @@ function uploadFiles() {
   if (StackMob.isLoggedIn() == false) {
     return;
   }
-  var files = $('#file-picker')[0].files;
-  for (var i = 0, numFiles = files.length; i < numFiles; i++) {
-    var file = files[i];
-    uploadFile(file);
-  }
+  sheetgroups.each(function(group) {
+    var sheets = group.pendingSheets;
+    if (sheets != undefined) {
+      sheets.each(function(sheet) {
+          uploadSheetToGroup(sheet, group)
+      });
+    }
+  });
 }
 
-function uploadFile(file) {
+function sheetFromFile(file, handler) {
   var reader = new FileReader();  
   var sheet = new Sheet();
   
-  $('#status-'+file.index).html('uploading').addClass('inprogress')
+  sheet.set({title: file.name});
   
-  reader.onload = function (evt) {
-	var base64Content = e.target.result.substring(e.target.result.indexOf(',') + 1, e.target.result.length);
-	var fileName = theFile.name;
-	var fileType = theFile.type;
+  reader.onload = function (e) {
+    var base64Content = e.target.result.substring(e.target.result.indexOf(',') + 1, e.target.result.length);
+    var fileName = file.name;
+    var fileType = file.type;
     
     sheet.setBinaryFile('data', fileName, fileType, base64Content);
-    sheet.create({
-      success: function(model) {
-        console.debug("upload succeeded");
-        $('#status-'+fileIndex).html("done").removeClass('inprogress').addClass('done');
-      },
-      error: function(model, response) {
-        console.debug("upload failed: " + response);
-        $('#status-'+fileIndex).html("error").removeClass('inprogress');
-      }
-    })
+
+    handler(sheet);
   };
+  reader.readAsDataURL(file);
+}
+
+function uploadSheetToGroup(sheet, group) {
+
+  $('#status-'+sheet.cid).html('uploading').addClass('inprogress')
+  group.addRelationship('sheets', [sheet], {
+    success: function(model) {
+      console.debug("upload succeeded");
+      $('#status-'+sheet.cid).html("done").removeClass('inprogress').addClass('done');
+    },
+    error: function(model, response) {
+      console.debug("upload failed: " + response);
+      $('#status-'+sheet.cid).html("error").removeClass('inprogress');
+    }
+  })
 }
 
 function setupDragAndDrop(dropzone) {
@@ -203,20 +242,21 @@ function setupDragAndDrop(dropzone) {
   }
   
   dropzone.ondragover = function(event) {
-	  event.stopPropagation();
-	  event.preventDefault();
-	  
-	  event.dataTransfer.dropEffect = 'copy'
+    event.stopPropagation();
+    event.preventDefault();
+    
+    event.dataTransfer.dropEffect = 'copy'
   }
   
   dropzone.ondrop = function(event) {
-	  event.stopPropagation();
-	  event.preventDefault();
-	  
-	  $(dropzone).removeClass('highlighted')
-	  var listElement = $(dropzone).find('ul.selected-files')
-	  var filesArray = event.dataTransfer.files;
-	  listFiles(filesArray, listElement);
+    event.stopPropagation();
+    event.preventDefault();
+
+    $(dropzone).removeClass('highlighted')
+
+    var group = $(dropzone).data('sheetgroup');
+    var filesArray = event.dataTransfer.files;
+    insertFilesInGroup(filesArray, group);
   }
   
   document.documentElement.ondragenter = function(event) {
@@ -229,7 +269,7 @@ function setupDragAndDrop(dropzone) {
 
 
 checkForLogin();
-listSheets();
+populateSheetGroups();
 </script>
 
 </body>

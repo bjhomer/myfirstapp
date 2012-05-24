@@ -177,11 +177,11 @@ textarea {
   content: " - ";
 }
 
-#sheets-list {
+.sheets-list {
   padding-left: 2px;
 }
 
-#sheets-list li {
+.sheets-list li {
   list-style-type:none;
 }
 
