@@ -32,6 +32,7 @@
   <input id='file-picker' type="file" multiple onchange="listFiles(this.files)"/>
 
   <input class="button green" type="button" onclick="uploadFiles()" value="Upload!" />
+  <input class="button green" type="button" onclick="uploadFilesToGroup()" value="Upload to group!" />
   <div></div>
   <ul id="selected-files" class="selected-files"></ul>
 
@@ -50,6 +51,9 @@ var Sheet = StackMob.Model.extend({
   schemaName: 'sheet'
 });
 
+var SheetGroup = StackMob.Model.extend( {
+  schemaName: 'sheetgroup'
+})
 
 function listFiles(files) {
   $('#selected-files').html('');
@@ -60,7 +64,23 @@ function listFiles(files) {
   }
 }
 
+var group = undefined;
+
+function uploadFilesToGroup() {
+  group = new SheetGroup({name: "testgroup"});
+  group.fetch( {
+    success: function () {
+      var files = $('#file-picker')[0].files;
+      for (var i = 0, numFiles = files.length; i < numFiles; i++) {
+        var file = files[i];
+        uploadFile(file);
+      }
+    }
+  });
+}
+
 function uploadFiles() {
+  group = undefined;
   var files = $('#file-picker')[0].files;
   for (var i = 0, numFiles = files.length; i < numFiles; i++) {
     var file = files[i];
@@ -109,7 +129,18 @@ function uploadDataForSheet(file, sheet, options) {
     var fileData = e.target.result.substring(e.target.result.indexOf(',') + 1, e.target.result.length);
     sheet.set('title', name);
     sheet.setBinaryFile('sheet_data', name, type, fileData);
-    sheet.create(options);
+
+    if (group == undefined) {
+      sheet.create(options);
+    }
+    else {
+      sheet.create({
+        success: function () {
+          group.appendAndSave('sheets', [sheet], options)
+        }
+      })
+    }
+
   }
   reader.readAsDataURL(file)
 }
