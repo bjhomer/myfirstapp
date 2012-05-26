@@ -79,11 +79,16 @@ function uploadFile(file) {
       var fileIndex = file.index;
       console.debug("upload succeeded");
       $('#status-'+fileIndex).html("done").removeClass('inprogress').addClass('done');
-      $('#response-value').text(JSON.stringify(savedSheet.toJSON()));
+      $('#response-value').text("saved. fetching from server");
 
-      savedSheet.fetch({
+      var blankSheet = new Sheet({title:file.name});
+      blankSheet.fetch({
         success: function (fetched) {
-          console.debug(JSON.stringify(fetched.toJSON()));
+          console.debug("fetched user");
+          $('#response-value').text(JSON.stringify(savedSheet.toJSON()));
+        },
+        error: function () {
+          console.debug("Error fetching");
         }
       });
     },
