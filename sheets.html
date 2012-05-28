@@ -63,7 +63,24 @@ var SheetGroupsCollection = StackMob.Collection.extend({ model: SheetGroup });
 var sheetgroups = new SheetGroupsCollection();
 
 var Sheet = StackMob.Model.extend({ 
-  schemaName: 'sheet'
+  schemaName: 'sheet',
+  readFile: function sheetFromFile(file, handler) {
+    var reader = new FileReader();  
+
+    this.set({title: file.name});
+    var thisSheet = this;
+
+    reader.onload = function (e) {
+      var base64Content = e.target.result.substring(e.target.result.indexOf(',') + 1, e.target.result.length);
+      var fileName = file.name;
+      var fileType = file.type;
+
+      thisSheet.setBinaryFile('sheet_data', fileName, fileType, base64Content);
+
+      handler(thisSheet);
+    };
+    reader.readAsDataURL(file);
+  }
 });
 var SheetCollection = StackMob.Collection.extend({model: Sheet});
 
@@ -127,7 +144,7 @@ function appendSheetGroup(group) {
       var sheet = sheets[i];
       $dragTarget.before('<li>' + sheet.title + '</li>');
     }
-  }
+  } 
 }
 
 
@@ -173,19 +190,18 @@ function insertFilesInGroup(files, group) {
   var groupname = group.get('name');
   var dropzone = $('#drag-target-' + groupname);
   var listElement = $(dropzone).find('ul.selected-files')
-  group.pendingSheets = new SheetCollection();
+  if (group.pendingSheets == undefined) {
+    group.pendingSheets = new SheetCollection();
+  }
 
-  $(listElement).html('');  
   for (var i=0; i<files.length; ++i) {
     var file = files[i];
-    var filerow = $(listElement).append('<li>' + file.name + '</li>');
-
-    (function (row) {
-      sheetFromFile(file, function (sheet) {
-        filerow.append('<span class="status" id="status-'+sheet.cid+'"></span>')
-        group.pendingSheets.add(sheet);
-      });
-    })(filerow);
+    var sheet = new Sheet();
+    $(listElement).append('<li>' + file.name + '<span class="status" id="status-'+sheet.cid+'"></span></li>');
+  
+    sheet.readFile(file, function (sheet) {
+      group.pendingSheets.add(sheet);
+    });
   }
 }
 
@@ -203,23 +219,7 @@ function uploadFiles() {
   });
 }
 
-function sheetFromFile(file, handler) {
-  var reader = new FileReader();  
-  var sheet = new Sheet();
-  
-  sheet.set({title: file.name});
-  
-  reader.onload = function (e) {
-    var base64Content = e.target.result.substring(e.target.result.indexOf(',') + 1, e.target.result.length);
-    var fileName = file.name;
-    var fileType = file.type;
-    
-    sheet.setBinaryFile('sheet_data', fileName, fileType, base64Content);
 
-    handler(sheet);
-  };
-  reader.readAsDataURL(file);
-}
 
 function uploadSheetToGroup(sheet, group) {
 
@@ -301,13 +301,6 @@ function setupDragAndDrop(dropzone) {
     }
 
     insertFilesInGroup(filteredArray, group);
-  }
-  
-  document.documentElement.ondragenter = function(event) {
-    event.stopPropagation();
-    event.preventDefault();
-    
-    event.dataTransfer.dropEffect = 'none';
   }
 }
 
