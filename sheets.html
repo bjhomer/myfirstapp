@@ -43,12 +43,17 @@
   <span class="sheetgroup-name"></span>
   <ul class="sheets-list"></ul>
 
-  <div class="drag-target" style="display:none">Drop files here to upload.
+  <div class="drag-target" style="display:none">Drop PDFs here to upload.
     <ul class="selected-files"></ul>
   </div>
 </li>
 
 <script type="text/javascript">
+
+String.prototype.endsWith = function(suffix) {
+    return this.indexOf(suffix, this.length - suffix.length) !== -1;
+};
+
 var SheetGroup = StackMob.Model.extend({ schemaName: 'sheetgroup' });
 var SheetGroupsCollection = StackMob.Collection.extend({ model: SheetGroup });
 var sheetgroups = new SheetGroupsCollection();
@@ -230,6 +235,20 @@ function uploadSheetToGroup(sheet, group) {
 
 function setupDragAndDrop(dropzone) {
   
+  dropzone.validatedrop = function(event) {
+    var files = event.dataTransfer.files;
+    var hasPDFs = false;
+
+    for (var i=0; i<files.length; ++i) {
+      var file = files[i];
+      if (file.name.endsWith('.pdf')) {
+        hasPDFs = true;
+        break;
+      }
+    }
+    return hasPDFs;
+  }
+
   dropzone.ondragenter = function(event) {
     event.stopPropagation();
     event.preventDefault();
@@ -259,7 +278,16 @@ function setupDragAndDrop(dropzone) {
 
     var group = $(dropzone).data('sheetgroup');
     var filesArray = event.dataTransfer.files;
-    insertFilesInGroup(filesArray, group);
+
+    var filteredArray = [];
+    for (var i=0; i<filesArray.length; ++i) {
+      var file = filesArray[i];
+      if (file.name.endsWith('.pdf')) {
+        filteredArray.push(file);
+      }
+    }
+
+    insertFilesInGroup(filteredArray, group);
   }
   
   document.documentElement.ondragenter = function(event) {
