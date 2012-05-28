@@ -196,6 +196,7 @@ function insertFilesInGroup(files, group) {
 
   for (var i=0; i<files.length; ++i) {
     var file = files[i];
+
     var sheet = new Sheet();
     $(listElement).append('<li>' + file.name + '<span class="status" id="status-'+sheet.cid+'"></span></li>');
   
@@ -290,12 +291,28 @@ function setupDragAndDrop(dropzone) {
     $(dropzone).removeClass('highlighted')
 
     var group = $(dropzone).data('sheetgroup');
+    var sheetnames = {};
+
+    var sheets = group.get('sheets');
+    if (sheets != undefined) {
+      for (var i=0; i<sheets.length; ++i) {
+        var sheetInfo = sheets[i];
+        sheetnames[sheetInfo.title] = true;
+      }
+    }
+    if (group.pendingSheets != undefined) {
+      for (var i=0; i<group.pendingSheets.length; ++i) {
+        var sheet = group.pendingSheets.at(i);
+        sheetnames[sheet.get('title')] = true;
+      }
+    }
+    
     var filesArray = event.dataTransfer.files;
 
     var filteredArray = [];
     for (var i=0; i<filesArray.length; ++i) {
       var file = filesArray[i];
-      if (file.name.endsWith('.pdf')) {
+      if (file.name.endsWith('.pdf') && sheetnames[file.name] == undefined) {
         filteredArray.push(file);
       }
     }
