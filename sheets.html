@@ -41,11 +41,15 @@
 
 <li id="sheetgroup-template" style="display:none">
   <span class="sheetgroup-name"></span>
-  <ul class="sheets-list"></ul>
+  <div></div>
+  <ul class="sheets-list">
 
-  <div class="drag-target" style="display:none">Drop PDFs here to upload.
-    <ul class="selected-files"></ul>
-  </div>
+    <li>
+      <div class="drag-target" style="display:none">Drop PDFs here to upload.
+        <ul class="selected-files"></ul>
+      </div>
+    </li>
+  </ul>
 </li>
 
 <script type="text/javascript">
@@ -115,6 +119,15 @@ function appendSheetGroup(group) {
   $dragTarget.data('sheetgroup', group);
   setupDragAndDrop($dragTarget.get(0), name);
   $('#new-sheetgroup').before($newElement);
+
+  var sheets = group.get('sheets');
+  if (sheets != undefined) {
+    var $sheetsList = $newElement.find('.sheets-list');
+    for (var i=0; i<sheets.length; ++i) {
+      var sheet = sheets[i];
+      $dragTarget.before('<li>' + sheet.title + '</li>');
+    }
+  }
 }
 
 

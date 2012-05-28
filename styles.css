@@ -153,10 +153,6 @@ textarea {
   min-height: 250px;
 }
 
-.selected-files {
-  #display: inline-block;
-}
-
 .selected-files li {
   margin-top: 0.3em;
   margin-bottom: 0.3em;
@@ -178,7 +174,12 @@ textarea {
 }
 
 .sheets-list {
+  display: inline-block;
+  background-color: #D6EC9C;
+  border: #98be47 solid 1px;
+  border-radius: 5px;
   padding-left: 2px;
+  padding-right: 2px;
 }
 
 .sheets-list li {
@@ -187,7 +188,7 @@ textarea {
 
 .drag-target {
   display: inline-block;
-  background-color: #D6EC9C;
+  background-color: #eee;
   border: #98be47 solid 1px;
   border-radius: 5px;
   padding: 3px;
