@@ -54,14 +54,7 @@ var SheetGroupsCollection = StackMob.Collection.extend({ model: SheetGroup });
 var sheetgroups = new SheetGroupsCollection();
 
 var Sheet = StackMob.Model.extend({ 
-  schemaName: 'sheet',
-  setBinaryFile: function(fieldName, filename, filetype, base64EncodedData) {
-    var binaryValueString = 'Content-Type: ' + filetype + '\n' + 
-      'Content-Disposition: attachment; ' + 
-      'filename=' + filename + '\n' + 
-      'Content-Transfer-Encoding: base64\n\n' + base64EncodedData;
-    this.set({fieldName: binaryValueString}); 
-  }
+  schemaName: 'sheet'
 });
 var SheetCollection = StackMob.Collection.extend({model: Sheet});
 
@@ -203,7 +196,7 @@ function sheetFromFile(file, handler) {
     var fileName = file.name;
     var fileType = file.type;
     
-    sheet.setBinaryFile('data', fileName, fileType, base64Content);
+    sheet.setBinaryFile('sheet_data', fileName, fileType, base64Content);
 
     handler(sheet);
   };
@@ -213,14 +206,24 @@ function sheetFromFile(file, handler) {
 function uploadSheetToGroup(sheet, group) {
 
   $('#status-'+sheet.cid).html('uploading').addClass('inprogress')
-  group.addRelationship('sheets', [sheet], {
-    success: function(model) {
-      console.debug("upload succeeded");
-      $('#status-'+sheet.cid).html("done").removeClass('inprogress').addClass('done');
+  sheet.create({
+    error: function (model, response) {
+      console.debug('save failed:' + response);
     },
-    error: function(model, response) {
-      console.debug("upload failed: " + response);
-      $('#status-'+sheet.cid).html("error").removeClass('inprogress');
+    success: function(model) {
+
+      group.appendAndSave('sheets', [model.get('sheet_id')], {
+
+        success: function(model) {
+          console.debug("upload succeeded");
+          $('#status-'+sheet.cid).html("done").removeClass('inprogress').addClass('done');
+        },
+        error: function(model, response) {
+          console.debug("upload failed: " + response);
+          $('#status-'+sheet.cid).html("error").removeClass('inprogress');
+        }
+        
+      })
     }
   })
 }

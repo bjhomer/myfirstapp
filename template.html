@@ -69,12 +69,16 @@ var group = undefined;
 function uploadFilesToGroup() {
   group = new SheetGroup({name: "testgroup"});
   group.fetch( {
-    success: function () {
+    success: function (g) {
+      group = new SheetGroup(g.get('0'));
       var files = $('#file-picker')[0].files;
       for (var i = 0, numFiles = files.length; i < numFiles; i++) {
         var file = files[i];
         uploadFile(file);
       }
+    },
+    error: function (model, response) {
+      console.debug("error: " + response)
     }
   });
 }
@@ -105,7 +109,7 @@ function uploadFile(file) {
       blankSheet.fetch({
         success: function (fetched) {
           console.debug("fetched user");
-          $('#response-value').text(JSON.stringify(savedSheet.toJSON()));
+          $('#response-value').text(JSON.stringify(savedSheet, null, '\t'));
         },
         error: function () {
           console.debug("Error fetching");
@@ -136,7 +140,7 @@ function uploadDataForSheet(file, sheet, options) {
     else {
       sheet.create({
         success: function () {
-          group.appendAndSave('sheets', [sheet], options)
+          group.appendAndSave('sheets', [sheet.get('sheet_id')], options)
         }
       })
     }
