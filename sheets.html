@@ -26,34 +26,37 @@
 
 <div id="loginStatus"></div>
 
+<div id="login-body">
+  <div id="csv-drop" class="drag-target">Drop a CSV here</div>
 
 
-<ul id="sheetgroups-list" style="display:none">
-  <li id="new-sheetgroup">
-    <form onsubmit="createNewSheetGroup(); return false;">
-      <input id='new-sheetgroup-name' type="text" placeholder="Add a new sheet group"/>
-      <input type="submit" value="Add"/>
-    </form>
-  </li>
-</ul>
-
-<input type="button" onclick="uploadFiles()" value="Upload files" />
-
-
-
-
-<li id="sheetgroup-template" style="display:none">
-  <span class="sheetgroup-name"></span>
-  <div></div>
-  <ul class="sheets-list">
-
-    <li>
-      <div class="drag-target" style="display:none">Drop PDFs here to upload.
-        <ul class="selected-files"></ul>
-      </div>
+  <ul id="sheetgroups-list">
+    <li id="new-sheetgroup">
+      <form onsubmit="createNewSheetGroup(); return false;">
+        <input id='new-sheetgroup-name' type="text" placeholder="Add a new sheet group"/>
+        <input type="submit" value="Add"/>
+      </form>
     </li>
   </ul>
-</li>
+
+  <input type="button" onclick="uploadFiles()" value="Upload files" />
+
+
+
+
+  <li id="sheetgroup-template" style="display:none">
+    <span class="sheetgroup-name"></span>
+    <div></div>
+    <ul class="sheets-list">
+
+      <li>
+        <div class="drag-target" style="display:none">Drop PDFs here to upload.
+          <ul class="selected-files"></ul>
+        </div>
+      </li>
+    </ul>
+  </li>
+</div>
 
 <script type="text/javascript">
 
@@ -127,7 +130,7 @@ function populateSheetGroups() {
 function appendSheetGroup(group) {
   sheetgroups.add(group)
 
-  var name = group.get('name');
+  var name = group.get('name').replace(/ /g, '');
   var $newElement = $('#sheetgroup-template').clone();
   $newElement.attr('id', 'sheetgroup-'+name);
   $newElement.find('.sheetgroup-name').text(name);
@@ -137,7 +140,7 @@ function appendSheetGroup(group) {
   $dragTarget.attr('id', 'drag-target-'+name);
   $dragTarget.css('display', '');
   $dragTarget.data('sheetgroup', group);
-  setupDragAndDrop($dragTarget.get(0), name);
+  setupDragAndDrop($dragTarget.get(0), handlePDFDrops);
   $('#new-sheetgroup').before($newElement);
 
   var sheets = group.get('sheets');
@@ -186,13 +189,12 @@ function checkForLogin() {
   else {
     var username = StackMob.getLoggedInUser();
     $(loginStatus).text('Welcome, ' + username);
-    $('#drag-target').css('display', '');
-    $('#sheetgroups-list').css('display', '')
+    $('#login-body').css('display', '')
   }
 }
 
 function insertFilesInGroup(files, group) {
-  var groupname = group.get('name');
+  var groupname = group.get('name').replace(/ /g, '');
   var dropzone = $('#drag-target-' + groupname);
   var listElement = $(dropzone).find('ul.selected-files')
   if (group.pendingSheets == undefined) {
@@ -252,21 +254,7 @@ function uploadSheetToGroup(sheet, group) {
   })
 }
 
-function setupDragAndDrop(dropzone) {
-  
-  dropzone.validatedrop = function(event) {
-    var files = event.dataTransfer.files;
-    var hasPDFs = false;
-
-    for (var i=0; i<files.length; ++i) {
-      var file = files[i];
-      if (file.name.endsWith('.pdf')) {
-        hasPDFs = true;
-        break;
-      }
-    }
-    return hasPDFs;
-  }
+function setupDragAndDrop(dropzone, dropHandler) {
 
   dropzone.ondragenter = function(event) {
     event.stopPropagation();
@@ -295,51 +283,51 @@ function setupDragAndDrop(dropzone) {
 
     $(dropzone).removeClass('highlighted')
 
-    var group = $(dropzone).data('sheetgroup');
-    var sheetnames = {};
-
-    var sheets = group.get('sheets');
-    if (sheets != undefined) {
-      for (var i=0; i<sheets.length; ++i) {
-        var sheetInfo = sheets[i];
-        sheetnames[sheetInfo.title] = true;
-      }
-    }
-    if (group.pendingSheets != undefined) {
-      for (var i=0; i<group.pendingSheets.length; ++i) {
-        var sheet = group.pendingSheets.at(i);
-        sheetnames[sheet.get('title')] = true;
-      }
-    }
-    
-    var filesArray = event.dataTransfer.files;
-
-    var filteredArray = [];
-    for (var i=0; i<filesArray.length; ++i) {
-      var file = filesArray[i];
-      if (file.name.endsWith('.csv')) {
-        readCSV(file);
-        continue;
-      }
-      if (file.name.endsWith('.pdf') && sheetnames[file.name] == undefined) {
-        filteredArray.push(file);
-      }
-    }
-
-    insertFilesInGroup(filteredArray, group);
+    dropHandler(event, dropzone)
   }
 }
 
-var groupOrderKey = "Discipline Order Group";
-var groupTitleKey = "Sheet Index Group Title";
-var sheetNumberKey = "Sheet Number";
-var sheetNameKey   = "Sheet Name";
+function handlePDFDrops (event, dropzone) {
+  var group = $(dropzone).data('sheetgroup');
+  var sheetnames = {};
+
+  var sheets = group.get('sheets');
+  if (sheets != undefined) {
+    for (var i=0; i<sheets.length; ++i) {
+      var sheetInfo = sheets[i];
+      sheetnames[sheetInfo.title] = true;
+    }
+  }
+  if (group.pendingSheets != undefined) {
+    for (var i=0; i<group.pendingSheets.length; ++i) {
+      var sheet = group.pendingSheets.at(i);
+      sheetnames[sheet.get('title')] = true;
+    }
+  }
+  
+  var filesArray = event.dataTransfer.files;
+
+  var filteredArray = [];
+  for (var i=0; i<filesArray.length; ++i) {
+    var file = filesArray[i];
+    if (file.name.endsWith('.pdf') && sheetnames[file.name] == undefined) {
+      filteredArray.push(file);
+    }
+  }
+
+  insertFilesInGroup(filteredArray, group);
+}
+
+var groupOrderKey = 0;
+var groupTitleKey = 1;
+var sheetNumberKey = 2;
+var sheetNameKey   = 3;
 
 function readCSV(file) {
   var reader = new FileReader();
   reader.onload = function (e) {
     var csv = e.target.result;
-    var dicts = $.csv2Dictionary(csv);
+    var dicts = $.csv2Array(csv, {skip: 1}) || [];
 
     var sheetgroups = project.get('sheetgroups') || (new SheetGroupsCollection());
     var sheetgroupNames = [];
@@ -360,8 +348,23 @@ function readCSV(file) {
   reader.readAsText(file);
 }
 
+function handleCSVDrops (event, dropzone) {
+  var group = $(dropzone).data('sheetgroup');
+  
+  var filesArray = event.dataTransfer.files;
+
+  for (var i=0; i<filesArray.length; ++i) {
+    var file = filesArray[i];
+    if (file.name.endsWith('.csv')) {
+      readCSV(file);
+      break;
+    }
+  }
+}
+
 checkForLogin();
 populateSheetGroups();
+setupDragAndDrop(document.getElementById('csv-drop'), handleCSVDrops);
 </script>
 
 </body>
