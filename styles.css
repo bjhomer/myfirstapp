@@ -173,15 +173,6 @@ textarea {
   content: " - ";
 }
 
-.sheets-list {
-  display: inline-block;
-  background-color: #D6EC9C;
-  border: #98be47 solid 1px;
-  border-radius: 5px;
-  padding-left: 2px;
-  padding-right: 2px;
-}
-
 .sheets-list li {
   list-style-type:none;
 }
@@ -191,8 +182,16 @@ textarea {
   background-color: #eee;
   border: #98be47 solid 1px;
   border-radius: 5px;
-  padding: 3px;
+  padding: 5px;
+  margin-top: 3px;
+  margin-bottom: 3px;
 }
+
+.drag-target.green {
+  background-color: #D6EC9C;
+  border: #98be47 solid 1px;
+}
+
 
 .drag-target.highlighted {
   background-color: red;

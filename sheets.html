@@ -26,36 +26,27 @@
 
 <div id="loginStatus"></div>
 
-<div id="login-body">
+<div id="login-body" style="display:none">
   <div id="csv-drop" class="drag-target">Drop a CSV here</div>
+  <div></div>
 
-
-  <ul id="sheetgroups-list">
-    <li id="new-sheetgroup">
-      <form onsubmit="createNewSheetGroup(); return false;">
-        <input id='new-sheetgroup-name' type="text" placeholder="Add a new sheet group"/>
-        <input type="submit" value="Add"/>
-      </form>
-    </li>
-  </ul>
-
+  <div id="pdf-drop" class="drag-target green">Drop PDFs here
+    <ul id="sheetgroups-list">
+    </ul>
+  </div>
+  <div></div>
   <input type="button" onclick="uploadFiles()" value="Upload files" />
 
-
-
+<!-- Templates for cloning -->
 
   <li id="sheetgroup-template" style="display:none">
     <span class="sheetgroup-name"></span>
     <div></div>
     <ul class="sheets-list">
-
-      <li>
-        <div class="drag-target" style="display:none">Drop PDFs here to upload.
-          <ul class="selected-files"></ul>
-        </div>
-      </li>
     </ul>
   </li>
+<!-- End templates for cloning -->
+
 </div>
 
 <script type="text/javascript">
@@ -97,6 +88,8 @@ var loginStatus = document.getElementById('loginStatus');
 var projectId = window.location.search.substring(1)
 var project = new Project({ project_id: projectId });
 
+var expectedStructure = [];
+
 function populateSheetGroups() {
   var loggedIn = StackMob.isLoggedIn();
   if (loggedIn == false) {
@@ -104,21 +97,17 @@ function populateSheetGroups() {
     return;
   }
   
-  var sheetsList = document.getElementById('sheets-list')
-  $(sheetsList).css('display', '');
   
   project.fetchExpanded(2, {
     success: function(model) {
       project = model;
-      var groups = project.get('sheetgroups');
-      if (groups == undefined) {
-        showHasNoGroups();
-        return;
-      }
+      var groups = project.get('sheetgroups') || [];
       for (var i=0; i<groups.length; ++i) {
         var model = new SheetGroup(groups[i]);
-        appendSheetGroup(model);
+        sheetgroups.add(model);
+        expectedStructure.push(groups[i])
       }
+      renderExpectedStructure();
     },
     failure: function(model, response) {
       console.debug('failed to fetch project: ' + response);
@@ -127,38 +116,33 @@ function populateSheetGroups() {
 
 }
 
-function appendSheetGroup(group) {
-  sheetgroups.add(group)
-
-  var name = group.get('name').replace(/ /g, '');
+function renderSheetGroup(group) {
+  var name = group.name;
+  var idName = name.replace(/ /g, '');
   var $newElement = $('#sheetgroup-template').clone();
-  $newElement.attr('id', 'sheetgroup-'+name);
+  $newElement.attr('id', 'sheetgroup-'+idName);
   $newElement.find('.sheetgroup-name').text(name);
   $newElement.css('display', '')
 
-  var $dragTarget = $newElement.find('.drag-target')
-  $dragTarget.attr('id', 'drag-target-'+name);
-  $dragTarget.css('display', '');
-  $dragTarget.data('sheetgroup', group);
-  setupDragAndDrop($dragTarget.get(0), handlePDFDrops);
-  $('#new-sheetgroup').before($newElement);
+  $('#sheetgroups-list').append($newElement);
 
-  var sheets = group.get('sheets');
-  if (sheets != undefined) {
-    var $sheetsList = $newElement.find('.sheets-list');
-    for (var i=0; i<sheets.length; ++i) {
-      var sheet = sheets[i];
-      $dragTarget.before('<li>' + sheet.title + '</li>');
-    }
-  } 
+  var sheets = group.sheets || [];
+  var $sheetsList = $newElement.find('.sheets-list');
+  for (var i=0; i<sheets.length; ++i) {
+    var sheet = sheets[i];
+    $sheetsList.append('<li>' + sheet.title + '</li>');
+  }
 }
 
+function renderExpectedStructure () {
+  $('#sheetgroups-list').html('');
+  for (var i=0; i<expectedStructure.length; ++i) {
+    var group = expectedStructure[i];
+    renderSheetGroup(group);
+  }
+}
 
 function createNewSheetGroup(name) {
-  var nameField = document.getElementById('new-sheetgroup-name');
-  if (name === undefined) {
-    name = nameField.value;
-  }
   if (name.length == 0) {
     return;
   }
@@ -168,17 +152,14 @@ function createNewSheetGroup(name) {
       if (!group.toJSON) {
         group = new SheetGroup(group); 
       }
-      appendSheetGroup(group);
-      nameField.value = ""
+      expectedStructure.push(group.toJSON());
+      sheetgroups.add(group);
+      renderSheetGroup(group.toJSON());
     },
     error: function (model, response) {
       console.debug(response);
     }
   });
-}
-
-function showHasNoGroups() {
-  $('#sheets-list').append("<li>There are no sheets in this project</li>");
 }
 
 function checkForLogin() {
@@ -218,12 +199,10 @@ function uploadFiles() {
     return;
   }
   sheetgroups.each(function(group) {
-    var sheets = group.pendingSheets;
-    if (sheets != undefined) {
-      sheets.each(function(sheet) {
-          uploadSheetToGroup(sheet, group)
-      });
-    }
+    var sheets = group.pendingSheets || new SheetCollection();
+    sheets.each(function(sheet) {
+      uploadSheetToGroup(sheet, group)
+    });
   });
 }
 
@@ -329,21 +308,43 @@ function readCSV(file) {
     var csv = e.target.result;
     var dicts = $.csv2Array(csv, {skip: 1}) || [];
 
-    var sheetgroups = project.get('sheetgroups') || (new SheetGroupsCollection());
+    var newStructure = expectedStructure;
+
+    // var sheetgroups = project.get('sheetgroups') || (new SheetGroupsCollection());
     var sheetgroupNames = [];
-    for (var i=0; i<sheetgroups.length; ++i) {
-      var group = sheetgroups[i];
+    for (var i=0; i<newStructure.length; ++i) {
+      var group = newStructure[i];
       sheetgroupNames.push(group.name)
     }
+
     for (var i=0; i<dicts.length; ++i) {
       var row = dicts[i];
       var rowGroupName = row[groupTitleKey];
+      var rowSheetNumber = row[sheetNumberKey];
+      var rowTitle = row[sheetNameKey];
+
       var existingIndex = sheetgroupNames.indexOf(rowGroupName);
       if (existingIndex == -1) {
-        createNewSheetGroup(rowGroupName);
+        var group = {
+          name: rowGroupName,
+          sheets: []
+        };
         sheetgroupNames.push(rowGroupName);
+        newStructure.push(group);
       }
+      else {
+        group = newStructure[existingIndex];
+      }
+      if (group.sheets === undefined) {
+        group.sheets = [];
+      }
+      group.sheets.push({
+        sheet_number: rowSheetNumber,
+        title: rowTitle
+      });
+      newStructure
     }
+    renderExpectedStructure();
   }
   reader.readAsText(file);
 }
@@ -365,6 +366,7 @@ function handleCSVDrops (event, dropzone) {
 checkForLogin();
 populateSheetGroups();
 setupDragAndDrop(document.getElementById('csv-drop'), handleCSVDrops);
+setupDragAndDrop(document.getElementById('pdf-drop'), handlePDFDrops);
 </script>
 
 </body>
