@@ -31,6 +31,7 @@
   <div></div>
 
   <div id="pdf-drop" class="drag-target green">Drop PDFs here
+    <div id="warning"></div>
     <ul id="sheetgroups-list">
     </ul>
   </div>
@@ -64,7 +65,6 @@ var Sheet = StackMob.Model.extend({
   readFile: function sheetFromFile(file, handler) {
     var reader = new FileReader();  
 
-    this.set({title: file.name});
     var thisSheet = this;
 
     reader.onload = function (e) {
@@ -74,7 +74,9 @@ var Sheet = StackMob.Model.extend({
 
       thisSheet.setBinaryFile('sheet_data', fileName, fileType, base64Content);
 
-      handler(thisSheet);
+      if (handler) {
+        handler(thisSheet);
+      }
     };
     reader.readAsDataURL(file);
   }
@@ -89,6 +91,7 @@ var projectId = window.location.search.substring(1)
 var project = new Project({ project_id: projectId });
 
 var expectedStructure = [];
+var sheetNumberMap = {}
 
 function populateSheetGroups() {
   var loggedIn = StackMob.isLoggedIn();
@@ -105,8 +108,9 @@ function populateSheetGroups() {
       for (var i=0; i<groups.length; ++i) {
         var model = new SheetGroup(groups[i]);
         sheetgroups.add(model);
-        expectedStructure.push(groups[i])
+        expectedStructure.push(model)
       }
+      project.set('sheetgroups', groups)
       renderExpectedStructure();
     },
     failure: function(model, response) {
@@ -117,6 +121,7 @@ function populateSheetGroups() {
 }
 
 function renderSheetGroup(group) {
+  group = group.toJSON();
   var name = group.name;
   var idName = name.replace(/ /g, '');
   var $newElement = $('#sheetgroup-template').clone();
@@ -130,12 +135,14 @@ function renderSheetGroup(group) {
   var $sheetsList = $newElement.find('.sheets-list');
   for (var i=0; i<sheets.length; ++i) {
     var sheet = sheets[i];
-    $sheetsList.append('<li>' + sheet.title + '</li>');
+    var sheetClass = sheet.get('sheet_data') ? 'saved-sheet' : 'pending-sheet'
+    $sheetsList.append('<li class='+sheetClass+'><b>' + sheet.get('sheet_number') + '</b> - ' + sheet.get('title') + '</li>');
   }
 }
 
 function renderExpectedStructure () {
   $('#sheetgroups-list').html('');
+  $('#warning').html('');
   for (var i=0; i<expectedStructure.length; ++i) {
     var group = expectedStructure[i];
     renderSheetGroup(group);
@@ -152,7 +159,7 @@ function createNewSheetGroup(name) {
       if (!group.toJSON) {
         group = new SheetGroup(group); 
       }
-      expectedStructure.push(group.toJSON());
+      expectedStructure.push(group);
       sheetgroups.add(group);
       renderSheetGroup(group.toJSON());
     },
@@ -175,23 +182,41 @@ function checkForLogin() {
 }
 
 function insertFilesInGroup(files, group) {
-  var groupname = group.get('name').replace(/ /g, '');
-  var dropzone = $('#drag-target-' + groupname);
-  var listElement = $(dropzone).find('ul.selected-files')
-  if (group.pendingSheets == undefined) {
-    group.pendingSheets = new SheetCollection();
-  }
+  // var groupname = group.get('name').replace(/ /g, '');
+  // var dropzone = $('#drag-target-' + groupname);
+  // var listElement = $(dropzone).find('ul.selected-files')
+  // if (group.pendingSheets == undefined) {
+  //   group.pendingSheets = new SheetCollection();
+  // }
 
+  var expectedCount = files.length;
+  var renderedCount = 0;
+  var unknownFiles = [];
   for (var i=0; i<files.length; ++i) {
     var file = files[i];
 
-    var sheet = new Sheet();
-    $(listElement).append('<li>' + file.name + '<span class="status" id="status-'+sheet.cid+'"></span></li>');
+    var sheet = sheetNumberMap[file.name];
+    if (sheet === undefined) {
+      unknownFiles.push(file.name);
+      expectedCount -= 1;
+      continue;
+    }
+    // $(listElement).append('<li>' + file.name + '<span class="status" id="status-'+sheet.cid+'"></span></li>');
   
     sheet.readFile(file, function (sheet) {
-      group.pendingSheets.add(sheet);
+      renderedCount += 1;
+      if (renderedCount >= expectedCount) {
+        renderExpectedStructure();
+      } 
     });
   }
+  if (unknownFiles.length > 0) {
+    $('#warning').html("Warning: The following files did not match any sheets: <br><br>" + unknownFiles.join('<br>'));
+  }
+  else {
+    $('#warning').html('');
+  }
+
 }
 
 function uploadFiles() {
@@ -248,6 +273,13 @@ function setupDragAndDrop(dropzone, dropHandler) {
     
     $(dropzone).removeClass('highlighted');
   }
+
+  dropzone.ondragend = function (event) {
+    event.stopPropagation();
+    event.preventDefault();
+
+    $(dropzone).removeClass('highlighted');
+  }
   
   dropzone.ondragover = function(event) {
     event.stopPropagation();
@@ -267,34 +299,34 @@ function setupDragAndDrop(dropzone, dropHandler) {
 }
 
 function handlePDFDrops (event, dropzone) {
-  var group = $(dropzone).data('sheetgroup');
-  var sheetnames = {};
+  // var group = $(dropzone).data('sheetgroup');
+  // var sheetnames = {};
 
-  var sheets = group.get('sheets');
-  if (sheets != undefined) {
-    for (var i=0; i<sheets.length; ++i) {
-      var sheetInfo = sheets[i];
-      sheetnames[sheetInfo.title] = true;
-    }
-  }
-  if (group.pendingSheets != undefined) {
-    for (var i=0; i<group.pendingSheets.length; ++i) {
-      var sheet = group.pendingSheets.at(i);
-      sheetnames[sheet.get('title')] = true;
-    }
-  }
+  // var sheets = group.get('sheets');
+  // if (sheets != undefined) {
+  //   for (var i=0; i<sheets.length; ++i) {
+  //     var sheetInfo = sheets[i];
+  //     sheetnames[sheetInfo.title] = true;
+  //   }
+  // }
+  // if (group.pendingSheets != undefined) {
+  //   for (var i=0; i<group.pendingSheets.length; ++i) {
+  //     var sheet = group.pendingSheets.at(i);
+  //     sheetnames[sheet.get('title')] = true;
+  //   }
+  // }
   
   var filesArray = event.dataTransfer.files;
 
   var filteredArray = [];
   for (var i=0; i<filesArray.length; ++i) {
     var file = filesArray[i];
-    if (file.name.endsWith('.pdf') && sheetnames[file.name] == undefined) {
+    if (file.name.endsWith('.pdf')) {
       filteredArray.push(file);
     }
   }
 
-  insertFilesInGroup(filteredArray, group);
+  insertFilesInGroup(filteredArray);
 }
 
 var groupOrderKey = 0;
@@ -314,7 +346,7 @@ function readCSV(file) {
     var sheetgroupNames = [];
     for (var i=0; i<newStructure.length; ++i) {
       var group = newStructure[i];
-      sheetgroupNames.push(group.name)
+      sheetgroupNames.push(group.get('name'))
     }
 
     for (var i=0; i<dicts.length; ++i) {
@@ -325,24 +357,25 @@ function readCSV(file) {
 
       var existingIndex = sheetgroupNames.indexOf(rowGroupName);
       if (existingIndex == -1) {
-        var group = {
+        var group = new SheetGroup({
           name: rowGroupName,
           sheets: []
-        };
+        });
         sheetgroupNames.push(rowGroupName);
         newStructure.push(group);
       }
       else {
         group = newStructure[existingIndex];
       }
-      if (group.sheets === undefined) {
-        group.sheets = [];
-      }
-      group.sheets.push({
+      var sheet = new Sheet({
         sheet_number: rowSheetNumber,
         title: rowTitle
       });
-      newStructure
+      var groupSheets = group.get('sheets') || [];
+      groupSheets.push(sheet);
+      group.set('sheets', groupSheets)
+
+      sheetNumberMap[rowSheetNumber + '.pdf'] = sheet;
     }
     renderExpectedStructure();
   }

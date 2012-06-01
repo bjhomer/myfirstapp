@@ -197,3 +197,15 @@ textarea {
   background-color: red;
   color: white;
 }
+
+.pending-sheet {
+  color: #aaa;
+}
+
+.saved-sheet {
+}
+
+#warning {
+  color: red;
+  margin-left: 3em;
+}
