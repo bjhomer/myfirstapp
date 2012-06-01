@@ -158,16 +158,16 @@ textarea {
   margin-bottom: 0.3em;
 }
 
-.selected-files .inprogress {
+.status.inprogress {
   color: gray;
 }
 
-.selected-files .done {
+.status.done {
   color: green;
   font-weight: bold;
 }
 
-.selected-files .status:not(:empty):before {
+.status:not(:empty):before {
   color: black;
   font-weight: normal;
   content: " - ";

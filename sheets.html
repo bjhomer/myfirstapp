@@ -108,7 +108,12 @@ function populateSheetGroups() {
       for (var i=0; i<groups.length; ++i) {
         var model = new SheetGroup(groups[i]);
         sheetgroups.add(model);
-        expectedStructure.push(model)
+        expectedStructure.push(model);
+        var sheets = model.get('sheets') || [];
+        for (var j=0; j<sheets.length; ++j) {
+          var sheet = new Sheet(sheets[j]);
+          sheets[j] = sheet;
+        }
       }
       project.set('sheetgroups', groups)
       renderExpectedStructure();
@@ -136,7 +141,16 @@ function renderSheetGroup(group) {
   for (var i=0; i<sheets.length; ++i) {
     var sheet = sheets[i];
     var sheetClass = sheet.get('sheet_data') ? 'saved-sheet' : 'pending-sheet'
-    $sheetsList.append('<li class='+sheetClass+'><b>' + sheet.get('sheet_number') + '</b> - ' + sheet.get('title') + '</li>');
+    var statusContents = ''
+    if (sheet.needsSave) {
+      statusContents = 'ready to save';
+    }
+    $sheetsList.append(
+      '<li class=' + sheetClass + '>'
+      + '<b>' + sheet.get('sheet_number') + '</b> - '
+      + sheet.get('title') 
+      + '<span class="status" id="status-' + sheet.cid + '">' + statusContents + '</span>'
+      + '</li>');
   }
 }
 
@@ -199,11 +213,15 @@ function insertFilesInGroup(files, group) {
     if (sheet === undefined) {
       unknownFiles.push(file.name);
       expectedCount -= 1;
+      if (renderedCount >= expectedCount) {
+        renderExpectedStructure();
+      } 
       continue;
     }
     // $(listElement).append('<li>' + file.name + '<span class="status" id="status-'+sheet.cid+'"></span></li>');
   
     sheet.readFile(file, function (sheet) {
+      sheet.needsSave = true;
       renderedCount += 1;
       if (renderedCount >= expectedCount) {
         renderExpectedStructure();
@@ -223,10 +241,16 @@ function uploadFiles() {
   if (StackMob.isLoggedIn() == false) {
     return;
   }
+  sheetgroups = new SheetGroupsCollection(expectedStructure);
   sheetgroups.each(function(group) {
-    var sheets = group.pendingSheets || new SheetCollection();
+    var sheets = group.get('sheets') || new SheetCollection();
+    if (sheets.toJSON == undefined) {
+      sheets = new SheetCollection(sheets);
+    }
     sheets.each(function(sheet) {
-      uploadSheetToGroup(sheet, group)
+      if (sheet.needsSave) {
+        uploadSheetToGroup(sheet, group)
+      }
     });
   });
 }
@@ -372,7 +396,17 @@ function readCSV(file) {
         title: rowTitle
       });
       var groupSheets = group.get('sheets') || [];
-      groupSheets.push(sheet);
+      var existingSheet = _.find(groupSheets, function(item) {
+        return item.get('sheet_number') == rowSheetNumber;
+      })
+      if (!existingSheet) {
+        groupSheets.push(sheet);
+      } else {
+        // If this sheet does exist, move it to the current index
+        existingIndex = groupSheets.indexOf(existingSheet);
+        groupSheets.splice(existingIndex,1);
+        groupSheets.push(existingSheet);
+      }
       group.set('sheets', groupSheets)
 
       sheetNumberMap[rowSheetNumber + '.pdf'] = sheet;
