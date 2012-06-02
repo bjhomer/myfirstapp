@@ -115,7 +115,6 @@ function populateSheetGroups() {
           sheets[j] = sheet;
         }
       }
-      project.set('sheetgroups', groups)
       renderExpectedStructure();
     },
     failure: function(model, response) {
@@ -247,38 +246,78 @@ function uploadFiles() {
     if (sheets.toJSON == undefined) {
       sheets = new SheetCollection(sheets);
     }
-    sheets.each(function(sheet) {
-      if (sheet.needsSave) {
-        uploadSheetToGroup(sheet, group)
+
+    sheets = new SheetCollection(sheets.filter(function (sheet) {return sheet.needsSave}));
+  
+    var sheetCount = sheets.length;
+    var handledSheets = 0;
+
+    var saveGroupIfLastSheet = function () {
+      if (handledSheets == sheetCount) {
+        saveGroupSheets(group, sheets);
       }
+    }
+
+    // saveGroupIfLastSheet();
+
+    sheets.each(function(sheet) {
+      uploadSheet(sheet, function () {
+        handledSheets += 1;
+        saveGroupIfLastSheet();
+      });
     });
   });
+  var savedGroups = new SheetGroupsCollection(sheetgroups.reject(function(x) {return x.isNew()}));
+  var savedGroupIDs = savedGroups.pluck('sheetgroup_id');
+  project.set('sheetgroups', savedGroupIDs);
+  project.save();
+}
+
+function saveGroupSheets(group, sheets) {
+  var sheetIDs = sheets.pluck('sheet_id')
+  group.set('sheets', sheetIDs);
+
+  var handlerOptions = {
+    success: function(model) {
+      sheets.each(function (sheet) {
+        $('#status-'+sheet.cid).html("done").removeClass('inprogress').addClass('done');
+      });
+    },
+    error: function(model, response) {
+      console.debug("saving sheets to group failed: " + response);
+      sheets.each(function (sheet) {
+        $('#status-'+sheet.cid).html("done").removeClass('inprogress').addClass('done');
+      });
+    }   
+  }
+
+  if (group.isNew()) {
+    group.create(handlerOptions);
+  }
+  else {
+    group.save(handlerOptions);
+  }
 }
 
 
-
-function uploadSheetToGroup(sheet, group) {
+function uploadSheet(sheet, callback) {
 
   $('#status-'+sheet.cid).html('uploading').addClass('inprogress')
   sheet.create({
     error: function (model, response) {
       console.debug('save failed:' + response);
+      $('#status-'+sheet.cid).html("error").removeClass('inprogress');
+      if (callback) {
+        callback(undefined, response);
+      }
     },
-    success: function(model) {
-
-      group.appendAndSave('sheets', [model.get('sheet_id')], {
-
-        success: function(model) {
-          console.debug("upload succeeded");
-          $('#status-'+sheet.cid).html("done").removeClass('inprogress').addClass('done');
-        },
-        error: function(model, response) {
-          console.debug("upload failed: " + response);
-          $('#status-'+sheet.cid).html("error").removeClass('inprogress');
-        }
-        
-      })
-    }
+    success: function(model, response) {
+      console.debug("upload succeeded");
+      $('#status-'+sheet.cid).html("saving");
+      if (callback) {
+        callback(model, response);
+      }
+    },
   })
 }
 
@@ -366,7 +405,6 @@ function readCSV(file) {
 
     var newStructure = expectedStructure;
 
-    // var sheetgroups = project.get('sheetgroups') || (new SheetGroupsCollection());
     var sheetgroupNames = [];
     for (var i=0; i<newStructure.length; ++i) {
       var group = newStructure[i];
@@ -389,7 +427,12 @@ function readCSV(file) {
         newStructure.push(group);
       }
       else {
-        group = newStructure[existingIndex];
+        // Move this existing group past all the stuff we just inserted
+        var group = newStructure[existingIndex];
+        newStructure.splice(existingIndex, 1);
+        newStructure.push(group)
+        sheetgroupNames.splice(existingIndex, 1);
+        sheetgroupNames.push(rowGroupName);
       }
       var sheet = new Sheet({
         sheet_number: rowSheetNumber,
