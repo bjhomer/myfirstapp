@@ -81,7 +81,12 @@ var Sheet = StackMob.Model.extend({
     reader.readAsDataURL(file);
   }
 });
-var SheetCollection = StackMob.Collection.extend({model: Sheet});
+var SheetCollection = StackMob.Collection.extend({
+  model: Sheet,
+  sheetsWithData: function () {
+    return new SheetCollection(this.filter(function(sheet) {return (sheet.isNew() == false) || sheet.needsSave}));
+  }
+});
 
 var Project = StackMob.Model.extend({ schemaName: 'project' });
 
@@ -136,9 +141,14 @@ function renderSheetGroup(group) {
   $('#sheetgroups-list').append($newElement);
 
   var sheets = group.sheets || [];
+  if (sheets.models) {
+    sheets = sheets.models;
+  }
+
   var $sheetsList = $newElement.find('.sheets-list');
   for (var i=0; i<sheets.length; ++i) {
     var sheet = sheets[i];
+
     var sheetClass = sheet.get('sheet_data') ? 'saved-sheet' : 'pending-sheet'
     var statusContents = ''
     if (sheet.needsSave) {
@@ -195,12 +205,6 @@ function checkForLogin() {
 }
 
 function insertFilesInGroup(files, group) {
-  // var groupname = group.get('name').replace(/ /g, '');
-  // var dropzone = $('#drag-target-' + groupname);
-  // var listElement = $(dropzone).find('ul.selected-files')
-  // if (group.pendingSheets == undefined) {
-  //   group.pendingSheets = new SheetCollection();
-  // }
 
   var expectedCount = files.length;
   var renderedCount = 0;
@@ -240,6 +244,28 @@ function uploadFiles() {
   if (StackMob.isLoggedIn() == false) {
     return;
   }
+
+  var groupsSaved = 0;
+  var sheetgroupsToSave = []
+  var saveProjectIfLastGroup = function () {
+    if (groupsSaved < sheetgroupsToSave.length) {
+      return;
+    }
+    var savedGroups = new SheetGroupsCollection(sheetgroupsToSave);
+    var savedGroupIDs = savedGroups.pluck('sheetgroup_id');
+    project.set('sheetgroups', savedGroupIDs);
+    project.save({
+      success: function () {
+        project.set('sheetgroups', savedGroups);
+        console.debug("Updated project");
+      },
+      error: function (model, response) {
+        project.set('sheetgroups', savedGroups);
+        console.debug("Failed to save project: " + response);
+      }
+    });
+  }
+
   sheetgroups = new SheetGroupsCollection(expectedStructure);
   sheetgroups.each(function(group) {
     var sheets = group.get('sheets') || new SheetCollection();
@@ -247,46 +273,60 @@ function uploadFiles() {
       sheets = new SheetCollection(sheets);
     }
 
-    sheets = new SheetCollection(sheets.filter(function (sheet) {return sheet.needsSave}));
+    var sheetsToUpload = new SheetCollection(sheets.filter(function (sheet) {return sheet.needsSave}));
+    var groupShouldPersist = sheets.sheetsWithData().length > 0;
+
   
-    var sheetCount = sheets.length;
+    if (groupShouldPersist) {
+      sheetgroupsToSave.push(group);
+      if (sheetsToUpload.length == 0) {
+        groupsSaved += 1;
+        saveProjectIfLastGroup();
+      }
+    }
+
+    var sheetCount = sheetsToUpload.length;
     var handledSheets = 0;
 
     var saveGroupIfLastSheet = function () {
       if (handledSheets == sheetCount) {
-        saveGroupSheets(group, sheets);
+        saveGroupSheets(group, sheets.sheetsWithData(), function () {
+          group.set('sheets', sheets);
+          groupsSaved += 1;
+          saveProjectIfLastGroup();
+        });
       }
     }
 
     // saveGroupIfLastSheet();
 
-    sheets.each(function(sheet) {
+    sheetsToUpload.each(function(sheet) {
       uploadSheet(sheet, function () {
         handledSheets += 1;
         saveGroupIfLastSheet();
       });
     });
   });
-  var savedGroups = new SheetGroupsCollection(sheetgroups.reject(function(x) {return x.isNew()}));
-  var savedGroupIDs = savedGroups.pluck('sheetgroup_id');
-  project.set('sheetgroups', savedGroupIDs);
-  project.save();
 }
 
-function saveGroupSheets(group, sheets) {
+function saveGroupSheets(group, sheets, successCallback) {
   var sheetIDs = sheets.pluck('sheet_id')
   group.set('sheets', sheetIDs);
 
   var handlerOptions = {
     success: function(model) {
       sheets.each(function (sheet) {
-        $('#status-'+sheet.cid).html("done").removeClass('inprogress').addClass('done');
+        if (sheet.needsSave) {
+          $('#status-'+sheet.cid).html("done").removeClass('inprogress').addClass('done');
+          sheet.needsSave = false;
+        }
       });
+      successCallback();
     },
     error: function(model, response) {
       console.debug("saving sheets to group failed: " + response);
       sheets.each(function (sheet) {
-        $('#status-'+sheet.cid).html("done").removeClass('inprogress').addClass('done');
+        $('#status-'+sheet.cid).html("error").removeClass('inprogress').addClass('error');
       });
     }   
   }
@@ -295,7 +335,7 @@ function saveGroupSheets(group, sheets) {
     group.create(handlerOptions);
   }
   else {
-    group.save(handlerOptions);
+    group.save({}, handlerOptions);
   }
 }
 
@@ -362,22 +402,6 @@ function setupDragAndDrop(dropzone, dropHandler) {
 }
 
 function handlePDFDrops (event, dropzone) {
-  // var group = $(dropzone).data('sheetgroup');
-  // var sheetnames = {};
-
-  // var sheets = group.get('sheets');
-  // if (sheets != undefined) {
-  //   for (var i=0; i<sheets.length; ++i) {
-  //     var sheetInfo = sheets[i];
-  //     sheetnames[sheetInfo.title] = true;
-  //   }
-  // }
-  // if (group.pendingSheets != undefined) {
-  //   for (var i=0; i<group.pendingSheets.length; ++i) {
-  //     var sheet = group.pendingSheets.at(i);
-  //     sheetnames[sheet.get('title')] = true;
-  //   }
-  // }
   
   var filesArray = event.dataTransfer.files;
 

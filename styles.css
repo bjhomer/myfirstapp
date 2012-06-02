@@ -167,6 +167,11 @@ textarea {
   font-weight: bold;
 }
 
+.status.error {
+  color: red;
+  font-weight: bold;
+}
+
 .status:not(:empty):before {
   color: black;
   font-weight: normal;
