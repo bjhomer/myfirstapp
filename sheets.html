@@ -117,6 +117,7 @@ function populateSheetGroups() {
         var sheets = model.get('sheets') || [];
         for (var j=0; j<sheets.length; ++j) {
           var sheet = new Sheet(sheets[j]);
+          sheetNumberMap[sheet.get('sheet_number') + '.pdf'] = sheet
           sheets[j] = sheet;
         }
       }
